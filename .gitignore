@@ -1,0 +1,7 @@
+.exportignore
+.env
+.idea
+.venv
+project_code.md
+project_tree.txt
+*.html
