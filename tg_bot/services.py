@@ -2,7 +2,22 @@ import io
 import asyncio
 import random
 from aiogram import Bot
+
+from clients.open_router import OpenRouterClient
 from parsers.sads import SadsParser
+from utils.utils import get_client_requirements_prompt
+
+
+async def process_estate_description(description: str) -> str | None:
+    or_client = OpenRouterClient()
+    prompt = get_client_requirements_prompt(description)
+
+    answer = await or_client.generate_text(
+        prompt=prompt,
+        model="poolside/laguna-m.1:free"
+    )
+
+    return answer
 
 async def mock_parse_html(bot: Bot, file_id: str) -> list[str]:
     file_buffer = io.BytesIO()
@@ -11,7 +26,7 @@ async def mock_parse_html(bot: Bot, file_id: str) -> list[str]:
 
     html_content = file_buffer.read().decode('utf-8')
     try:
-        parser = SadsParser(html_content=html_content)
+        parser = SadsParser(html_content)
         links = parser.parse()
         return links
     except Exception as e:
