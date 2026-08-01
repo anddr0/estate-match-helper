@@ -3,18 +3,19 @@ import asyncio
 import random
 from aiogram import Bot
 
-from clients.open_router import OpenRouterClient
+from clients.open_router import AIClient
 from parsers.sads import SadsParser
+from utils.constans.models import GEMINI_3_5_FLASH_LITE
 from utils.utils import get_client_requirements_prompt
 
 
 async def process_estate_description(description: str) -> str | None:
-    or_client = OpenRouterClient()
+    or_client = AIClient()
     prompt = get_client_requirements_prompt(description)
 
     answer = await or_client.generate_text(
         prompt=prompt,
-        model="poolside/laguna-m.1:free"
+        model=GEMINI_3_5_FLASH_LITE
     )
 
     return answer

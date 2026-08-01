@@ -1,34 +1,34 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ClientRentalRequirements",
-  "description": "Схема требований клиента на поиск квартиры под аренду в Польше с флагами строгости условий",
+  "description": "Client rental requirements schema for finding an apartment in Poland with strictness flags for conditions",
   "type": "object",
   "properties": {
     "property_requirements": {
       "type": "object",
-      "title": "Требования к недвижимости",
+      "title": "Property requirements",
       "properties": {
         "min_area_sqm": {
           "type": "object",
           "properties": {
-            "value": { "type": ["number", "null"], "minimum": 0, "description": "Минимальный метраж (кв. м)" },
-            "is_strict_requirement": { "type": "boolean", "default": false, "description": "Критично ли требование" }
+            "value": { "type": ["number", "null"], "minimum": 0, "description": "Minimum area (sqm)" },
+            "is_strict_requirement": { "type": "boolean", "default": false, "description": "Is the requirement strict" }
           },
           "required": ["value", "is_strict_requirement"]
         },
         "min_functional_requirements": {
           "type": "object",
           "properties": {
-            "value": { "type": ["string", "null"], "description": "Минимальный функционал (рабочее место, гардеробная)" },
-            "is_strict_requirement": { "type": "boolean", "default": false, "description": "Критично ли требование" }
+            "value": { "type": ["string", "null"], "description": "Minimum functionality (workspace, walk-in closet)" },
+            "is_strict_requirement": { "type": "boolean", "default": false, "description": "Is the requirement strict" }
           },
           "required": ["value", "is_strict_requirement"]
         },
         "rooms_count": {
           "type": "object",
           "properties": {
-            "value": { "type": ["integer", "null"], "minimum": 1, "description": "Количество комнат" },
-            "is_strict_requirement": { "type": "boolean", "default": false, "description": "Критично ли требование" }
+            "value": { "type": ["integer", "null"], "minimum": 1, "description": "Number of rooms" },
+            "is_strict_requirement": { "type": "boolean", "default": false, "description": "Is the requirement strict" }
           },
           "required": ["value", "is_strict_requirement"]
         },
@@ -38,9 +38,9 @@
             "value": {
               "type": ["string", "null"],
               "enum": ["Separate", "OpenPlan", "Kitchenette", "Any", null],
-              "description": "Тип кухни"
+              "description": "Kitchen type"
             },
-            "is_strict_requirement": { "type": "boolean", "default": false, "description": "Критично ли требование" }
+            "is_strict_requirement": { "type": "boolean", "default": false, "description": "Is the requirement strict" }
           },
           "required": ["value", "is_strict_requirement"]
         },
@@ -50,9 +50,9 @@
             "value": {
               "type": "array",
               "items": { "type": "string" },
-              "description": "Критерии дисквалификации зданий"
+              "description": "Building disqualification criteria"
             },
-            "is_strict_requirement": { "type": "boolean", "default": false, "description": "Критично ли требование" }
+            "is_strict_requirement": { "type": "boolean", "default": false, "description": "Is the requirement strict" }
           },
           "required": ["value", "is_strict_requirement"]
         },
@@ -62,7 +62,7 @@
             "floor_preferences": {
               "type": "object",
               "properties": {
-                "value": { "type": ["string", "null"], "description": "Пожелания по этажу" },
+                "value": { "type": ["string", "null"], "description": "Floor preferences" },
                 "is_strict_requirement": { "type": "boolean", "default": false }
               },
               "required": ["value", "is_strict_requirement"]
@@ -70,7 +70,7 @@
             "design_style": {
               "type": "object",
               "properties": {
-                "value": { "type": ["string", "null"], "description": "Дизайн / отделка" },
+                "value": { "type": ["string", "null"], "description": "Design / finish" },
                 "is_strict_requirement": { "type": "boolean", "default": false }
               },
               "required": ["value", "is_strict_requirement"]
@@ -78,7 +78,7 @@
             "has_balcony": {
               "type": "object",
               "properties": {
-                "value": { "type": ["boolean", "null"], "description": "Наличие балкона/террасы" },
+                "value": { "type": ["boolean", "null"], "description": "Presence of a balcony/terrace" },
                 "is_strict_requirement": { "type": "boolean", "default": false }
               },
               "required": ["value", "is_strict_requirement"]
@@ -86,7 +86,7 @@
             "other": {
               "type": "object",
               "properties": {
-                "value": { "type": ["string", "null"], "description": "Прочие пожелания" },
+                "value": { "type": ["string", "null"], "description": "Other preferences" },
                 "is_strict_requirement": { "type": "boolean", "default": false }
               },
               "required": ["value", "is_strict_requirement"]
@@ -95,10 +95,10 @@
         },
         "current_apartment_feedback": {
           "type": "object",
-          "description": "Отзыв о текущем жилье",
+          "description": "Feedback on current housing",
           "properties": {
-            "liked": { "type": ["string", "null"], "description": "Что нравится" },
-            "disliked": { "type": ["string", "null"], "description": "Что не нравится" }
+            "liked": { "type": ["string", "null"], "description": "What is liked" },
+            "disliked": { "type": ["string", "null"], "description": "What is disliked" }
           }
         }
       },
@@ -106,7 +106,7 @@
     },
     "location": {
       "type": "object",
-      "title": "Локация и транспорт",
+      "title": "Location and transportation",
       "properties": {
         "anchor_points": {
           "type": "object",
@@ -114,7 +114,7 @@
             "value": {
               "type": "array",
               "items": { "type": "string" },
-              "description": "Точки привязки по городу"
+              "description": "Anchor points in the city"
             },
             "is_strict_requirement": { "type": "boolean", "default": false }
           },
@@ -123,7 +123,7 @@
         "transportation_type": {
           "type": "object",
           "properties": {
-            "value": { "type": ["string", "null"], "description": "Тип коммуникации" },
+            "value": { "type": ["string", "null"], "description": "Transportation type" },
             "is_strict_requirement": { "type": "boolean", "default": false }
           },
           "required": ["value", "is_strict_requirement"]
@@ -134,7 +134,7 @@
             "optimal_time_minutes": {
               "type": "object",
               "properties": {
-                "value": { "type": ["integer", "null"], "description": "Оптимальное время доезда (мин)" },
+                "value": { "type": ["integer", "null"], "description": "Optimal commute time (min)" },
                 "is_strict_requirement": { "type": "boolean", "default": false }
               },
               "required": ["value", "is_strict_requirement"]
@@ -142,7 +142,7 @@
             "max_time_minutes": {
               "type": "object",
               "properties": {
-                "value": { "type": ["integer", "null"], "description": "Максимальное время доезда (мин)" },
+                "value": { "type": ["integer", "null"], "description": "Maximum commute time (min)" },
                 "is_strict_requirement": { "type": "boolean", "default": false }
               },
               "required": ["value", "is_strict_requirement"]
@@ -150,7 +150,7 @@
             "max_distance_km": {
               "type": "object",
               "properties": {
-                "value": { "type": ["number", "null"], "description": "Максимальное расстояние (км)" },
+                "value": { "type": ["number", "null"], "description": "Maximum distance (km)" },
                 "is_strict_requirement": { "type": "boolean", "default": false }
               },
               "required": ["value", "is_strict_requirement"]
@@ -163,7 +163,7 @@
             "value": {
               "type": "array",
               "items": { "type": "string" },
-              "description": "Пожелания по инфраструктуре"
+              "description": "Infrastructure preferences"
             },
             "is_strict_requirement": { "type": "boolean", "default": false }
           },
@@ -173,33 +173,33 @@
     },
     "personal_situation": {
       "type": "object",
-      "title": "Личная ситуация и финансы",
+      "title": "Personal situation and finances",
       "properties": {
         "tenants_profile": {
           "type": "object",
           "properties": {
-            "adults_count": { "type": "integer", "minimum": 1, "description": "Количество взрослых" },
-            "children_count": { "type": "integer", "minimum": 0, "description": "Количество детей" },
+            "adults_count": { "type": "integer", "minimum": 1, "description": "Number of adults" },
+            "children_count": { "type": "integer", "minimum": 0, "description": "Number of children" },
             "pets": {
               "type": "object",
               "properties": {
-                "value": { "type": ["string", "null"], "description": "Домашние животные" },
+                "value": { "type": ["string", "null"], "description": "Pets" },
                 "is_strict_requirement": { "type": "boolean", "default": false }
               },
               "required": ["value", "is_strict_requirement"]
             },
-            "details": { "type": ["string", "null"], "description": "Состав съёмщиков / особенности" }
+            "details": { "type": ["string", "null"], "description": "Tenant composition / details" }
           },
           "required": ["adults_count"]
         },
         "current_housing_status": {
           "type": ["string", "null"],
-          "description": "Ситуация с текущим жильем"
+          "description": "Current housing situation"
         },
         "lease_period_expectations": {
           "type": "object",
           "properties": {
-            "value": { "type": ["string", "null"], "description": "Ожидания по периоду аренды" },
+            "value": { "type": ["string", "null"], "description": "Lease period expectations" },
             "is_strict_requirement": { "type": "boolean", "default": false }
           },
           "required": ["value", "is_strict_requirement"]
@@ -207,12 +207,12 @@
         "financial_situation": {
           "type": "object",
           "properties": {
-            "occupations": { "type": ["string", "null"], "description": "Профессии / сферы деятельности" },
-            "employed_tenants_info": { "type": ["string", "null"], "description": "Кто именно работает" },
+            "occupations": { "type": ["string", "null"], "description": "Occupations / fields of activity" },
+            "employed_tenants_info": { "type": ["string", "null"], "description": "Who exactly is employed" },
             "income_proof_documents": {
               "type": "array",
               "items": { "type": "string" },
-              "description": "Документы подтверждения дохода"
+              "description": "Income proof documents"
             }
           }
         },
@@ -222,7 +222,7 @@
             "max_total_budget_pln": {
               "type": "object",
               "properties": {
-                "value": { "type": ["number", "null"], "description": "Максимальный бюджет (PLN)" },
+                "value": { "type": ["number", "null"], "description": "Maximum budget (PLN)" },
                 "is_strict_requirement": { "type": "boolean", "default": false }
               },
               "required": ["value", "is_strict_requirement"]
@@ -230,12 +230,12 @@
             "base_rent_pln": {
               "type": "object",
               "properties": {
-                "value": { "type": ["number", "null"], "description": "Чистая аренда без сборов (PLN)" },
+                "value": { "type": ["number", "null"], "description": "Base rent without fees (PLN)" },
                 "is_strict_requirement": { "type": "boolean", "default": false }
               },
               "required": ["value", "is_strict_requirement"]
             },
-            "includes_admin_fees": { "type": ["boolean", "null"], "description": "Включает ли бюджет czynsz" }
+            "includes_admin_fees": { "type": ["boolean", "null"], "description": "Does the budget include admin fees (czynsz)" }
           },
           "required": ["max_total_budget_pln"]
         }
@@ -244,7 +244,7 @@
     },
     "summary": {
       "type": "string",
-      "description": "Резюме и ключевые выводы по заявке клиента"
+      "description": "Summary and key takeaways from the client's request"
     }
   },
   "required": ["property_requirements", "location", "personal_situation"]

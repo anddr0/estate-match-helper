@@ -115,7 +115,7 @@ async def process_web_app_data(message: Message, state: FSMContext):
 
 @router.message(ParseFlow.waiting_for_web_app)
 async def process_web_app_invalid(message: Message):
-	await message.answer("Пожалуйста, воспользуйся кнопкой выше, чтобы открыть форму и отправить параметры.")
+	await message.answer("Пожалуйста, воспользуйся кнопкой, чтобы открыть форму и отправить параметры.")
 
 
 @router.message(ParseFlow.waiting_for_confirm, F.text.in_({"Да", "Нет"}))

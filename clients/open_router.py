@@ -7,22 +7,22 @@ from openai.types.chat import ChatCompletionMessageParam, ChatCompletionUserMess
 load_dotenv()
 
 
-class OpenRouterClient:
+class AIClient:
 	_instance = None
 
 	def __new__(cls):
 		if cls._instance is None:
-			cls._instance = super(OpenRouterClient, cls).__new__(cls)
+			cls._instance = super(AIClient, cls).__new__(cls)
 			cls._instance._init_client()
 		return cls._instance
 
 	def _init_client(self):
-		api_key = os.getenv("OPENROUTER_API_KEY")
+		api_key = os.getenv("AI_API_KEY")
 		if not api_key:
-			raise ValueError("Переменная OPENROUTER_API_KEY не найдена в .env")
+			raise ValueError("Переменная AI_API_KEY не найдена в .env")
 
 		self._client = AsyncOpenAI(
-			base_url="https://openrouter.ai/api/v1",
+			base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 			api_key=api_key,
 		)
 
@@ -54,7 +54,6 @@ class OpenRouterClient:
 				messages=messages
 			)
 
-			# cast убран, возвращаем напрямую
 			return response.choices[0].message.content
 		except Exception as e:
 			print(f"Ошибка API OpenRouter: {e}")
