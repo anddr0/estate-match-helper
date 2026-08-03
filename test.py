@@ -1,13 +1,18 @@
-from rich.pretty import pprint
+from clients.stealth_fetcher import StealthFetcher
+from loguru import logger
 
-from fetchers.stealth_fetcher import StealthFetcher
-from parsers.olx import OlxParser
+def test_fetcher():
+	logger.info("Запуск тестового скрипта для проверки StealthFetcher...")
 
-with open("olx_offer.html", "r") as f:
-	content = f.read()
+	test_url = "https://www.olx.pl/"
 
+	fetcher = StealthFetcher(impersonate_browser="chrome120")
+	html_content = fetcher.fetch_page(test_url)
 
-parser = OlxParser("olx_offer.html")
-parsed_content = parser.parse()
+	if html_content:
+		logger.info(f"Тест успешно пройден! Получено HTML размером {len(html_content)} символов.")
+	else:
+		logger.warning("Тест завершился без контента (возможно, сработала защита или нет сети).")
 
-pprint(parsed_content)
+if __name__ == "__main__":
+	test_fetcher()

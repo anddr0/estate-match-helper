@@ -3,7 +3,7 @@ import asyncio
 import random
 from aiogram import Bot
 
-from clients.open_router import AIClient
+from clients.ai import AIClient
 from parsers.sads import SadsParser
 from utils.constans.models import GEMINI_3_5_FLASH_LITE
 from utils.utils import get_client_requirements_prompt

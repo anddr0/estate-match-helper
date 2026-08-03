@@ -1,4 +1,4 @@
-from fetchers.stealth_fetcher import StealthFetcher
+from clients.stealth_fetcher import StealthFetcher
 from parsers.otodom import OtodomParser
 
 
