@@ -1,7 +1,15 @@
 import json
-import uuid
 import urllib.parse
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
+import uuid
+
+from aiogram.types import (
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    WebAppInfo,
+)
+
+from schemas.client_requirements_model import ClientRentalRequirements
+
 
 def get_confirm_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
@@ -17,11 +25,11 @@ def get_stop_kb() -> ReplyKeyboardMarkup:
         resize_keyboard=True
     )
 
-def get_webapp_keyboard(user_id: int, schema_data: dict) -> ReplyKeyboardMarkup:
+def get_webapp_keyboard(user_id: int, schema_data: ClientRentalRequirements) -> ReplyKeyboardMarkup:
     config = {
         "user_id": user_id,
         "session_uuid": str(uuid.uuid4()),
-        "schema_data": schema_data
+        "schema_data": schema_data.model_dump_json()
     }
     json_str = json.dumps(config, ensure_ascii=False)
     encoded_data = urllib.parse.quote(json_str)

@@ -1,15 +1,17 @@
-import io
 import asyncio
+import io
 import random
+
 from aiogram import Bot
 
 from clients.ai import AIClient
 from parsers.sads import SadsParser
+from schemas.client_requirements_model import ClientRentalRequirements
 from utils.constans.models import GEMINI_3_5_FLASH_LITE
 from utils.utils import get_client_requirements_prompt
 
 
-async def process_estate_description(description: str) -> str | None:
+async def process_estate_description(description: str) -> ClientRentalRequirements:
     or_client = AIClient()
     prompt = get_client_requirements_prompt(description)
 
@@ -18,7 +20,12 @@ async def process_estate_description(description: str) -> str | None:
         model=GEMINI_3_5_FLASH_LITE
     )
 
-    return answer
+    if not answer:
+        raise Exception("There is no answer from AI")
+
+    client_req_model = ClientRentalRequirements.model_validate_json(answer)
+
+    return client_req_model
 
 async def mock_parse_html(bot: Bot, file_id: str) -> list[str]:
     file_buffer = io.BytesIO()

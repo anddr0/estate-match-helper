@@ -72,21 +72,14 @@ async def process_description(message: Message, state: FSMContext, bot: Bot):
 	async with ChatActionSender.typing(bot=bot, chat_id=message.chat.id):
 		descr_json = await process_estate_description(message.text)
 
-	await state.update_data(descr_json=descr_json)
+	await message.answer(f"{descr_json}")
 
-	try:
-		clean_json = descr_json.replace("```json", "").replace("```", "").strip()
-		parsed_dict = json.loads(clean_json)
-		logger.success(f"JSON от нейросети успешно распарсен для {message.from_user.id}.")
-	except Exception as e:
-		logger.error(f"Не удалось распарсить JSON от нейросети для пользователя {message.from_user.id}: {e}")
-		await message.answer("Произошла ошибка при анализе текста. Попробуй перефразировать.")
-		return
+	await state.update_data(descr_json=descr_json)
 
 	await message.answer(
 		"Анализ завершен!\n\n"
 		"Теперь открой форму ниже, чтобы проверить строгость условий и комментарии:",
-		reply_markup=get_webapp_keyboard(message.from_user.id, parsed_dict)
+		reply_markup=get_webapp_keyboard(message.from_user.id, descr_json)
 	)
 
 	await state.set_state(ParseFlow.waiting_for_web_app)
