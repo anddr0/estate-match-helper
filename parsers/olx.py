@@ -1,6 +1,8 @@
 import json
-from parsers.base_parser import BaseParser
 
+from loguru import logger
+
+from parsers.base_parser import BaseParser
 
 
 class OlxParser(BaseParser):
@@ -9,21 +11,26 @@ class OlxParser(BaseParser):
 		if script_tag and script_tag.string:
 			try:
 				return json.loads(script_tag.string)
-			except json.JSONDecodeError:
+			except json.JSONDecodeError as e:
+				logger.error(f"JSONDecodeError при разборе JSON-LD в OlxParser: {e}")
 				return None
+		logger.debug("Скрипт application/ld+json не найден на странице.")
 		return None
 
 	def parse(self):
+		logger.info("Начало парсинга страницы OLX...")
 		json_ld = self._extract_json_ld()
 
 		if json_ld:
 			parsed_data = self._parse_hybrid(json_ld)
 			if parsed_data:
+				logger.success(f"Успешный парсинг объявления OLX (ID: {parsed_data.get('id')})")
 				return {
 					"status": "success",
 					"data": parsed_data
 				}
 
+		logger.warning("Данные JSON-LD не найдены или не распарсены, возвращаем ошибку.")
 		return {
 			"status": "error",
 			"error": "JSON-LD data not found in HTML"

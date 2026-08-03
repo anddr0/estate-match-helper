@@ -1,13 +1,18 @@
 import json
 
-from aiogram import Router, F, Bot
+from aiogram import Bot, F, Router
 from aiogram.filters import Command
-from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
+from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.utils.chat_action import ChatActionSender
+from loguru import logger
 
 from tg_bot.keyboards import get_confirm_kb, get_stop_kb, get_webapp_keyboard
-from tg_bot.services import process_links_concurrently, mock_parse_html, process_estate_description
+from tg_bot.services import (
+	mock_parse_html,
+	process_estate_description,
+	process_links_concurrently,
+)
 from tg_bot.states import ParseFlow
 
 router = Router()
@@ -15,12 +20,14 @@ router = Router()
 
 @router.message(Command("cancel"))
 async def cmd_cancel(message: Message, state: FSMContext):
+	logger.info(f"Пользователь {message.from_user.id} отменил действие (/cancel).")
 	await state.clear()
 	await message.answer("Действие отменено.", reply_markup=ReplyKeyboardRemove())
 
 
 @router.message(Command("parse"))
 async def cmd_parse(message: Message, state: FSMContext):
+	logger.info(f"Пользователь {message.from_user.id} запустил команду /parse.")
 	await message.answer("Ожидаю файл HTML. Скинь его мне.")
 	await state.set_state(ParseFlow.waiting_for_html)
 
@@ -28,15 +35,20 @@ async def cmd_parse(message: Message, state: FSMContext):
 @router.message(ParseFlow.waiting_for_html, F.document)
 async def process_document(message: Message, state: FSMContext, bot: Bot):
 	if not message.document.file_name.endswith(".html"):
+		logger.warning(f"Пользователь {message.from_user.id} отправил неверный формат файла: {message.document.file_name}")
 		await message.answer("Это не HTML файл! 😡\nЖду именно .html (или жми /cancel для отмены).")
 		return
 
+	logger.info(f"Получен HTML файл от {message.from_user.id}, начинаем парсинг ссылок...")
 	links = await mock_parse_html(bot, message.document.file_id)
+
 	if not links:
+		logger.warning(f"В файле пользователя {message.from_user.id} не найдено ссылок.")
 		await state.clear()
 		await message.answer("В твоем .html файле не найдено ни одной ссылки с обьявлениями( Завершаю процес...")
 		return
 
+	logger.success(f"Успешно спаршено {len(links)} ссылок для пользователя {message.from_user.id}.")
 	await state.update_data(estate_offers_links=links)
 
 	await message.answer(
@@ -52,6 +64,7 @@ async def process_document_invalid(message: Message):
 
 @router.message(ParseFlow.waiting_for_description, F.text)
 async def process_description(message: Message, state: FSMContext, bot: Bot):
+	logger.info(f"Получено текстовое описание от {message.from_user.id}, отправляем в нейросеть.")
 	await state.update_data(description=message.text)
 
 	await message.answer("Обрабатываем описание...")
@@ -64,14 +77,15 @@ async def process_description(message: Message, state: FSMContext, bot: Bot):
 	try:
 		clean_json = descr_json.replace("```json", "").replace("```", "").strip()
 		parsed_dict = json.loads(clean_json)
+		logger.success(f"JSON от нейросети успешно распарсен для {message.from_user.id}.")
 	except Exception as e:
-		print(f"Не удалось распарсить JSON от нейросети: {e}")
+		logger.error(f"Не удалось распарсить JSON от нейросети для пользователя {message.from_user.id}: {e}")
 		await message.answer("Произошла ошибка при анализе текста. Попробуй перефразировать.")
 		return
 
 	await message.answer(
-		f"Анализ завершен!\n\n"
-		f"Теперь открой форму ниже, чтобы проверить строгость условий и комментарии:",
+		"Анализ завершен!\n\n"
+		"Теперь открой форму ниже, чтобы проверить строгость условий и комментарии:",
 		reply_markup=get_webapp_keyboard(message.from_user.id, parsed_dict)
 	)
 
@@ -81,9 +95,11 @@ async def process_description(message: Message, state: FSMContext, bot: Bot):
 @router.message(ParseFlow.waiting_for_web_app, F.web_app_data)
 async def process_web_app_data(message: Message, state: FSMContext):
 	raw_data = message.web_app_data.data
+	logger.info(f"Получены данные из WebApp от пользователя {message.from_user.id}.")
 	try:
 		data = json.loads(raw_data)
-	except json.JSONDecodeError:
+	except json.JSONDecodeError as e:
+		logger.error(f"Ошибка JSONDecodeError при чтении данных из WebApp от {message.from_user.id}: {e}")
 		await message.answer("Ошибка при чтении данных из формы.")
 		return
 
@@ -121,10 +137,12 @@ async def process_web_app_invalid(message: Message):
 @router.message(ParseFlow.waiting_for_confirm, F.text.in_({"Да", "Нет"}))
 async def process_confirm(message: Message, state: FSMContext):
 	if message.text == "Нет":
+		logger.info(f"Пользователь {message.from_user.id} отменил обработку ссылок.")
 		await state.clear()
 		await message.answer("Понял, отменяем.", reply_markup=ReplyKeyboardRemove())
 		return
 
+	logger.info(f"Пользователь {message.from_user.id} подтвердил начало обработки ссылок.")
 	await state.set_state(ParseFlow.processing)
 	await state.update_data(stop_processing=False)
 	await message.answer("Начинаю обработку...", reply_markup=get_stop_kb())
@@ -133,6 +151,7 @@ async def process_confirm(message: Message, state: FSMContext):
 	links = data.get("estate_offers_links", [])
 
 	if not links:
+		logger.error(f"У пользователя {message.from_user.id} отсутствуют ссылки перед стартом обработки.")
 		await message.answer("Ошибка: ссылок для обработки не обнаружено", reply_markup=ReplyKeyboardRemove())
 		await state.clear()
 		return
@@ -144,11 +163,13 @@ async def process_confirm(message: Message, state: FSMContext):
 	# Проверяем, не нажал ли юзер кнопку "Стоп" пока шла обработка
 	current_data = await state.get_data()
 	if current_data.get("stop_processing"):
+		logger.warning(f"Обработка для {message.from_user.id} была остановлена пользователем.")
 		await message.answer("Обработка была остановлена пользователем.", reply_markup=ReplyKeyboardRemove())
 		await state.clear()
 		return
 
 	# Формируем итоговый ответ
+	logger.success(f"Обработка ссылок для {message.from_user.id} успешно завершена.")
 	response_lines = ["✅ **Результаты обработки:**\n"]
 	for is_match, text_result in results:
 		status_icon = "🟢" if is_match else "🔴"
@@ -172,7 +193,7 @@ async def process_confirm_invalid(message: Message):
 
 @router.message(ParseFlow.processing, F.text == "🛑 Стоп")
 async def stop_processing(message: Message, state: FSMContext):
-	# Обновляем флаг. Результат gather() просто будет проигнорирован в конце.
+	logger.info(f"Пользователь {message.from_user.id} нажал кнопку 'Стоп'.")
 	await state.update_data(stop_processing=True)
 	await message.answer("Останавливаю процесс...", reply_markup=ReplyKeyboardRemove())
 

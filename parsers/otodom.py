@@ -1,6 +1,6 @@
 import json
 
-from pydantic import BaseModel
+from loguru import logger
 
 from parsers.base_parser import BaseParser
 from schemas.property import ParsedPropertyResponse
@@ -12,23 +12,31 @@ class OtodomParser(BaseParser):
 		if script_tag and script_tag.string:
 			try:
 				return json.loads(script_tag.string)
-			except json.JSONDecodeError:
+			except json.JSONDecodeError as e:
+				logger.error(f"JSONDecodeError при разборе __NEXT_DATA__ в OtodomParser: {e}")
 				return None
+		logger.debug("Скрипт __NEXT_DATA__ не найден на странице Otodom.")
 		return None
 
 	def parse(self):
+		logger.info("Начало парсинга страницы Otodom...")
 		next_data = self._extract_next_data()
 
 		if next_data:
 			parsed_data = self._parse_from_json(next_data)
 			if parsed_data:
+				logger.success(f"Успешный парсинг Otodom из JSON (ID: {parsed_data.get('id')})")
 				return ParsedPropertyResponse.model_validate(parsed_data)
 
-		return self._parse_from_html_fallback()
+		logger.warning("Переход к резервному парсингу из HTML (fallback) для Otodom.")
+		fallback_result = self._parse_from_html_fallback()
+		logger.info("Завершен резервный парсинг из HTML.")
+		return fallback_result
 
 	def _parse_from_json(self, next_data):
 		ad_data = next_data.get('props', {}).get('pageProps', {}).get('ad', {})
 		if not ad_data:
+			logger.debug("Структура 'ad' отсутствует в __NEXT_DATA__")
 			return None
 
 		target_data = ad_data.get('target', {})
