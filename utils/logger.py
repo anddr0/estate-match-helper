@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
+
 from loguru import logger
+
 
 def setup_logging():
 	logger.remove()

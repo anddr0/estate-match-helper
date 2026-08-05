@@ -1,5 +1,7 @@
-from clients.stealth_fetcher import StealthFetcher
 from loguru import logger
+
+from clients.stealth_fetcher import StealthFetcher
+
 
 def test_fetcher():
 	logger.info("Запуск тестового скрипта для проверки StealthFetcher...")

@@ -1,5 +1,6 @@
 import os
-from typing import Iterable
+from collections.abc import Iterable
+
 from dotenv import load_dotenv
 from loguru import logger
 from openai import AsyncOpenAI
@@ -13,7 +14,7 @@ class AIClient:
 
 	def __new__(cls):
 		if cls._instance is None:
-			cls._instance = super(AIClient, cls).__new__(cls)
+			cls._instance = super().__new__(cls)
 			cls._instance._init_client()
 		return cls._instance
 

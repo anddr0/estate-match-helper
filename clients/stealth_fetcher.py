@@ -4,7 +4,10 @@ import time
 from curl_cffi import requests
 from loguru import logger
 
-from utils.constans.constants import MIN_DELAY_BEFORE_URL_FETCH, MAX_DELAY_BEFORE_URL_FETCH
+from utils.constans.constants import (
+    MAX_DELAY_BEFORE_URL_FETCH,
+    MIN_DELAY_BEFORE_URL_FETCH,
+)
 from utils.constans.headers import CHROME_SESSION_HEADERS
 
 

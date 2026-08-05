@@ -3,6 +3,7 @@ import io
 import random
 
 from aiogram import Bot
+from loguru import logger
 
 from clients.ai import AIClient
 from parsers.sads import SadsParser
@@ -38,7 +39,7 @@ async def mock_parse_html(bot: Bot, file_id: str) -> list[str]:
         links = parser.parse()
         return links
     except Exception as e:
-        print(f"Ошибка парсинга: {e}")
+        logger.error(f"Ошибка парсинга: {e}")
         return []
 
 async def mock_evaluate_link(link: str, description: str) -> tuple[bool, str]:
