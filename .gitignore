@@ -5,3 +5,5 @@
 project_code.md
 project_tree.txt
 *.html
+logs/
+*.log

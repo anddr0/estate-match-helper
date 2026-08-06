@@ -1,4 +1,4 @@
-from loguru import logger
+from utils.logger import logger
 
 from clients.stealth_fetcher import StealthFetcher
 

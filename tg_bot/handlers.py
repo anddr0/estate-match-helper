@@ -79,7 +79,7 @@ async def process_description(message: Message, state: FSMContext, bot: Bot):
 	await message.answer(
 		"Анализ завершен!\n\n"
 		"Теперь открой форму ниже, чтобы проверить строгость условий и комментарии:",
-		reply_markup=get_webapp_keyboard(message.from_user.id, descr_json)
+		reply_markup=await get_webapp_keyboard(message.from_user.id, descr_json)
 	)
 
 	await state.set_state(ParseFlow.waiting_for_web_app)
@@ -96,11 +96,37 @@ async def process_web_app_data(message: Message, state: FSMContext):
 		await message.answer("Ошибка при чтении данных из формы.")
 		return
 
-	strict_reqs = data.get("strict_requirements", {})
+	schema_data_raw = data.get("schema_data", {})
 	preferences_text = data.get("client_preferences_text", "")
 
+	from schemas.client_requirements_model import ClientRentalRequirements
+	try:
+		validated_schema = ClientRentalRequirements(**schema_data_raw)
+	except Exception as e:
+		logger.error(f"Ошибка валидации Pydantic модели из WebApp от {message.from_user.id}: {e}")
+		await message.answer("Ошибка валидации данных. Пожалуйста, попробуй еще раз.")
+		return
+
+	def extract_all_reqs(d: dict, p: str = "") -> dict:
+		res = {}
+		if isinstance(d, dict):
+			if "is_strict_requirement" in d and "value" in d:
+				res[p] = d["is_strict_requirement"]
+			else:
+				for k, v in d.items():
+					if v is not None and isinstance(v, (dict, list)):
+						if isinstance(v, dict):
+							res.update(extract_all_reqs(v, k))
+						elif isinstance(v, list):
+							for item in v:
+								if isinstance(item, dict):
+									res.update(extract_all_reqs(item, k))
+		return res
+
+	strict_reqs = extract_all_reqs(validated_schema.model_dump(mode='json'))
+
 	await state.update_data(
-		strict_requirements=strict_reqs,
+		descr_json=validated_schema,
 		preferences_text=preferences_text
 	)
 

@@ -3,12 +3,15 @@ from pathlib import Path
 
 from loguru import logger
 
+# Абсолютный путь к корню проекта (на уровень выше директории utils)
+BASE_DIR = Path(__file__).resolve().parent.parent
+LOGS_DIR = BASE_DIR / "logs"
+
 
 def setup_logging():
 	logger.remove()
 
-	log_path = Path("logs")
-	log_path.mkdir(exist_ok=True)
+	LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 	logger.add(
 		sys.stdout,
@@ -21,21 +24,23 @@ def setup_logging():
 	)
 
 	logger.add(
-		log_path / "app.log",
+		LOGS_DIR / "app.log",
 		rotation="10 MB",
 		retention="14 days",
 		compression="zip",
 		format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
-		level="INFO"
+		level="INFO",
+		encoding="utf-8"
 	)
 
 	logger.add(
-		log_path / "error.log",
+		LOGS_DIR / "error.log",
 		rotation="10 MB",
 		retention="30 days",
 		compression="zip",
 		format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
-		level="ERROR"
+		level="ERROR",
+		encoding="utf-8"
 	)
 
 	logger.info("Логирование успешно настроено.")

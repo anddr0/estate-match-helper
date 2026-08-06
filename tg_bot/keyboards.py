@@ -1,12 +1,14 @@
-import json
-import urllib.parse
+import ssl
 import uuid
 
+import aiohttp
+import certifi
 from aiogram.types import (
     KeyboardButton,
     ReplyKeyboardMarkup,
     WebAppInfo,
 )
+from loguru import logger
 
 from schemas.client_requirements_model import ClientRentalRequirements
 
@@ -25,17 +27,35 @@ def get_stop_kb() -> ReplyKeyboardMarkup:
         resize_keyboard=True
     )
 
-def get_webapp_keyboard(user_id: int, schema_data: ClientRentalRequirements) -> ReplyKeyboardMarkup:
+async def get_webapp_keyboard(user_id: int, schema_data: ClientRentalRequirements) -> ReplyKeyboardMarkup:
     config = {
         "user_id": user_id,
-        "session_uuid": str(uuid.uuid4()),
-        "schema_data": schema_data.model_dump_json()
+        "schema_data": schema_data.model_dump(mode='json')
     }
-    json_str = json.dumps(config, ensure_ascii=False)
-    encoded_data = urllib.parse.quote(json_str)
 
-    base_url = "https://anddr0.github.io/sads-estate-match-helper-forms/"
-    web_app_url = f"{base_url}?data={encoded_data}"
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    
+    form_id = None
+    try:
+        async with aiohttp.ClientSession() as session:  # noqa: SIM117
+            async with session.post(
+                    url="https://sads-match-helper-forms.pages.dev/api/form",
+                    json=config,
+                    ssl=ssl_context
+            ) as resp:
+
+                if resp.status in (200, 201):
+                    data = await resp.json()
+                    form_id = data.get("id")
+                else:
+                    logger.error(f"Failed to create form, status: {resp.status}")
+    except Exception as e:
+        logger.error(f"Error creating form: {e}")
+    
+    if not form_id:
+        form_id = str(uuid.uuid4())
+    
+    web_app_url = f"https://sads-match-helper-forms.pages.dev/?id={form_id}"
 
     return ReplyKeyboardMarkup(
         keyboard=[
