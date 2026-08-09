@@ -3,6 +3,7 @@ import json
 from loguru import logger
 
 from parsers.base import BaseParser
+from parsers.normalization import normalize_otodom_parameters
 from schemas.property import ParsedPropertyResponse
 
 
@@ -62,6 +63,7 @@ class OtodomParser(BaseParser):
 				parameters[key] = value
 
 		images = [img.get('large') for img in ad_data.get('images', []) if img.get('large')]
+		canonical_parameters = normalize_otodom_parameters(parameters)
 
 		return {
 			'id': ad_data.get('id'),
@@ -87,6 +89,7 @@ class OtodomParser(BaseParser):
 			},
 
 			'parameters': parameters,
+			**canonical_parameters,
 			'images': images,
 
 			'meta': {

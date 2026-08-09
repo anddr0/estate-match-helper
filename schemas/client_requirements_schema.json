@@ -62,7 +62,19 @@
             "floor_preferences": {
               "type": "object",
               "properties": {
-                "value": { "type": ["string", "null"], "description": "Floor preferences" },
+                "value": {
+                  "type": ["object", "null"],
+                  "description": "Structured floor preferences",
+                  "properties": {
+                    "min_floor": { "type": ["integer", "null"] },
+                    "max_floor": { "type": ["integer", "null"] },
+                    "excluded_floors": {
+                      "type": "array",
+                      "items": { "type": "integer" },
+                      "default": []
+                    }
+                  }
+                },
                 "is_strict_requirement": { "type": "boolean", "default": false }
               },
               "required": ["value", "is_strict_requirement"]

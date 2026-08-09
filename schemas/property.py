@@ -1,15 +1,13 @@
-from pydantic import BaseModel
-
-
-class OtodomRequest(BaseModel):
-    url: str
+from pydantic import BaseModel, Field
 
 
 class PriceData(BaseModel):
-    total: float | int | str | None = None
+    total: float | None = None
     currency: str | None = None
-    per_m2: float | int | str | None = None
-    rent: float | int | str | None = None
+    per_m2: float | None = None
+    rent: float | None = None
+    admin_fees: float | None = None
+    includes_admin_fees: bool | None = None
 
 
 class LocationData(BaseModel):
@@ -37,7 +35,28 @@ class PropertyData(BaseModel):
     price: PriceData | None = None
     location: LocationData | None = None
 
-    parameters: dict[str, str | list[str]] | None = None
+    # Canonical fields populated by site parsers. Matching code reads only these
+    # fields and never needs to know source-specific labels.
+    area_sqm: float | None = Field(default=None, ge=0)
+    rooms_count: int | None = Field(default=None, ge=1)
+    floor: int | None = None
+    building_floors: int | None = Field(default=None, ge=1)
+    kitchen_type: str | None = None
+    has_balcony: bool | None = None
+    pets_allowed: bool | None = None
+    max_tenants: int | None = Field(default=None, ge=1)
+    children_allowed: bool | None = None
+    lease_period_months: int | None = Field(default=None, ge=1)
+    furnished: bool | None = None
+    elevator: bool | None = None
+    parking: str | None = None
+    building_type: str | None = None
+    condition: str | None = None
+    heating: str | None = None
+    amenities: list[str] = Field(default_factory=list)
+
+    # Kept for diagnostics and AI context, not for matching lookups.
+    parameters: dict[str, str | list[str]] = Field(default_factory=dict)
     images: list[str] | None = None
     meta: MetaData | None = None
 

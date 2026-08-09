@@ -27,7 +27,7 @@ async def evaluate_offer(
 ) -> LinkEvaluation:
     try:
         parsed_response = await asyncio.to_thread(parse_property_url, url)
-        factual_score, potential_score = compare_offer(
+        factual_score, potential_score = await compare_offer(
             client_requirements,
             parsed_response.data,
         )

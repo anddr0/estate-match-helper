@@ -3,6 +3,7 @@ import json
 from loguru import logger
 
 from parsers.base import BaseParser
+from parsers.normalization import normalize_olx_parameters
 from schemas.property import ParsedPropertyResponse
 
 
@@ -46,6 +47,7 @@ class OlxParser(BaseParser):
 			location_data['subregion'] = offers.get('areaServed', {}).get('name')
 
 		parameters = self._get_parameters_html()
+		canonical_parameters = normalize_olx_parameters(parameters)
 
 		advertiser_type = parameters.pop('advertiser_type', None)
 		meta_data = {
@@ -62,6 +64,7 @@ class OlxParser(BaseParser):
 			'price': price_data,
 			'location': location_data,
 			'parameters': parameters,
+			**canonical_parameters,
 
 			'images': (
 				json_ld.get('image', [])

@@ -38,6 +38,21 @@ class ParserRouterTests(unittest.TestCase):
         self.assertEqual(result.status, "success")
         self.assertEqual(result.data.url, "https://www.olx.pl/d/oferta/1")
 
+    def test_olx_parser_populates_canonical_property_fields(self):
+        html = """
+        <script type="application/ld+json">
+        {"sku":"1","offers":{"price":3000}}
+        </script>
+        <div data-testid="ad-parameters-container">
+          <p>Powierzchnia: 45 m²</p><p>Liczba pokoi: 3 pokoje</p>
+        </div>
+        """
+
+        result = parse_property_url("https://olx.pl/d/oferta/1", _Fetcher(html))
+
+        self.assertEqual(result.data.area_sqm, 45)
+        self.assertEqual(result.data.rooms_count, 3)
+
 
 if __name__ == "__main__":
     unittest.main()

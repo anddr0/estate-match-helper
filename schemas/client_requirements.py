@@ -10,8 +10,14 @@ class Requirement(BaseModel, Generic[T]):
     is_strict_requirement: bool = Field(default=False)
 
 
+class FloorPreference(BaseModel):
+    min_floor: int | None = None
+    max_floor: int | None = None
+    excluded_floors: list[int] = Field(default_factory=list)
+
+
 class AdditionalPreferences(BaseModel):
-    floor_preferences: Requirement[str | None] | None = None
+    floor_preferences: Requirement[FloorPreference | None] | None = None
     design_style: Requirement[str | None] | None = None
     has_balcony: Requirement[bool | None] | None = None
     other: Requirement[str | None] | None = None
