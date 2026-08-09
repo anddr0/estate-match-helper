@@ -3,7 +3,7 @@ from collections.abc import Iterable
 
 from dotenv import load_dotenv
 from loguru import logger
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAIError
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionUserMessageParam
 
 load_dotenv()
@@ -51,7 +51,7 @@ class AIClient:
 			logger.info(f"Успешно получен ответ от модели '{model}' (длина ответа: {len(answer) if answer else 0} символов)")
 			return answer
 
-		except Exception as e:
+		except OpenAIError as e:
 			logger.exception(f"Ошибка API OpenRouter при генерации текста с моделью {model}: {e}")
 			return None
 
@@ -68,6 +68,6 @@ class AIClient:
 			logger.info(f"Успешный ответ chat_completion от модели '{model}'")
 			return answer
 
-		except Exception as e:
+		except OpenAIError as e:
 			logger.exception(f"Ошибка API OpenRouter в chat_completion с моделью {model}: {e}")
 			return None

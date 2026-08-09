@@ -2,7 +2,8 @@ import json
 
 from loguru import logger
 
-from parsers.base_parser import BaseParser
+from parsers.base import BaseParser
+from schemas.property import ParsedPropertyResponse
 
 
 class OlxParser(BaseParser):
@@ -25,16 +26,13 @@ class OlxParser(BaseParser):
 			parsed_data = self._parse_hybrid(json_ld)
 			if parsed_data:
 				logger.success(f"Успешный парсинг объявления OLX (ID: {parsed_data.get('id')})")
-				return {
-					"status": "success",
-					"data": parsed_data
-				}
+				return ParsedPropertyResponse(status="success", data=parsed_data)
 
 		logger.warning("Данные JSON-LD не найдены или не распарсены, возвращаем ошибку.")
-		return {
-			"status": "error",
-			"error": "JSON-LD data not found in HTML"
-		}
+		return ParsedPropertyResponse(
+			status="error",
+			error="JSON-LD data not found in HTML",
+		)
 
 	def _parse_hybrid(self, json_ld):
 		offers = json_ld.get('offers', {})
@@ -65,7 +63,11 @@ class OlxParser(BaseParser):
 			'location': location_data,
 			'parameters': parameters,
 
-			'images': json_ld.get('image', []) if isinstance(json_ld.get('image'), list) else [json_ld.get('image')],
+			'images': (
+				json_ld.get('image', [])
+				if isinstance(json_ld.get('image'), list)
+				else [json_ld['image']] if json_ld.get('image') else []
+			),
 			'meta': meta_data
 		}
 

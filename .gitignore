@@ -7,3 +7,5 @@ project_tree.txt
 *.html
 logs/
 *.log
+__pycache__/
+*.py[cod]

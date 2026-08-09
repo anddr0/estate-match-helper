@@ -2,7 +2,7 @@ import json
 
 from loguru import logger
 
-from parsers.base_parser import BaseParser
+from parsers.base import BaseParser
 from schemas.property import ParsedPropertyResponse
 
 
@@ -26,12 +26,25 @@ class OtodomParser(BaseParser):
 			parsed_data = self._parse_from_json(next_data)
 			if parsed_data:
 				logger.success(f"Успешный парсинг Otodom из JSON (ID: {parsed_data.get('id')})")
-				return ParsedPropertyResponse.model_validate(parsed_data)
+				return ParsedPropertyResponse(status="success", data=parsed_data)
 
 		logger.warning("Переход к резервному парсингу из HTML (fallback) для Otodom.")
-		fallback_result = self._parse_from_html_fallback()
+		fallback_data = self._parse_from_html_fallback()
 		logger.info("Завершен резервный парсинг из HTML.")
-		return fallback_result
+		if any(
+			(
+				fallback_data.get('id'),
+				fallback_data.get('title'),
+				fallback_data.get('description'),
+				fallback_data.get('parameters'),
+				fallback_data.get('price', {}).get('total'),
+			)
+		):
+			return ParsedPropertyResponse(status="success", data=fallback_data)
+		return ParsedPropertyResponse(
+			status="error",
+			error="Otodom data not found in HTML",
+		)
 
 	def _parse_from_json(self, next_data):
 		ad_data = next_data.get('props', {}).get('pageProps', {}).get('ad', {})
@@ -100,11 +113,15 @@ class OtodomParser(BaseParser):
 		return {
 			'id': self._get_id_html(),
 			'title': self._get_text_by_cy('adPageAdTitle'),
-			'price': self._get_text_by_cy('adPageHeaderPrice', remove_spaces=True),
-			'location': self._get_location_html(),
+			'price': {
+				'total': self.clean_number(
+					self._get_text_by_cy('adPageHeaderPrice', remove_spaces=True)
+				),
+				'currency': 'PLN',
+			},
+			'location': {'subregion': self._get_location_html()},
 			'description': self._get_text_by_cy('adPageAdDescription', separator='\n'),
 			'parameters': self._get_parameters_html(),
-			'note': 'Parsed via HTML fallback. Many fields missing.'
 		}
 
 	def _get_text_by_cy(self, cy_attr, separator=' ', remove_spaces=False):

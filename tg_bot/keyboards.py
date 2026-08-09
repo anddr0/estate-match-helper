@@ -10,7 +10,7 @@ from aiogram.types import (
 )
 from loguru import logger
 
-from schemas.client_requirements_model import ClientRentalRequirements
+from schemas.client_requirements import ClientRentalRequirements
 
 
 def get_confirm_kb() -> ReplyKeyboardMarkup:
@@ -49,7 +49,7 @@ async def get_webapp_keyboard(user_id: int, schema_data: ClientRentalRequirement
                     form_id = data.get("id")
                 else:
                     logger.error(f"Failed to create form, status: {resp.status}")
-    except Exception as e:
+    except (aiohttp.ClientError, OSError) as e:
         logger.error(f"Error creating form: {e}")
     
     if not form_id:

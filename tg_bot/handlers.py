@@ -6,13 +6,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.utils.chat_action import ChatActionSender
 from loguru import logger
+from pydantic import ValidationError
 
+from schemas.client_requirements import ClientRentalRequirements
+from services.offers import evaluate_offers, extract_offer_links
+from services.requirements import parse_client_requirements
+from tg_bot.downloads import download_html
 from tg_bot.keyboards import get_confirm_kb, get_stop_kb, get_webapp_keyboard
-from tg_bot.services import (
-	mock_parse_html,
-	process_estate_description,
-	process_links_concurrently,
-)
 from tg_bot.states import ParseFlow
 
 router = Router()
@@ -40,7 +40,13 @@ async def process_document(message: Message, state: FSMContext, bot: Bot):
 		return
 
 	logger.info(f"Получен HTML файл от {message.from_user.id}, начинаем парсинг ссылок...")
-	links = await mock_parse_html(bot, message.document.file_id)
+	try:
+		html_content = await download_html(bot, message.document.file_id)
+		links = extract_offer_links(html_content)
+	except (OSError, UnicodeDecodeError, ValueError) as e:
+		logger.error(f"Ошибка чтения HTML от пользователя {message.from_user.id}: {e}")
+		await message.answer("Не удалось прочитать HTML файл.")
+		return
 
 	if not links:
 		logger.warning(f"В файле пользователя {message.from_user.id} не найдено ссылок.")
@@ -70,9 +76,7 @@ async def process_description(message: Message, state: FSMContext, bot: Bot):
 	await message.answer("Обрабатываем описание...")
 
 	async with ChatActionSender.typing(bot=bot, chat_id=message.chat.id):
-		descr_json = await process_estate_description(message.text)
-
-	await message.answer(f"{descr_json}")
+		descr_json = await parse_client_requirements(message.text)
 
 	await state.update_data(descr_json=descr_json)
 
@@ -99,49 +103,21 @@ async def process_web_app_data(message: Message, state: FSMContext):
 	schema_data_raw = data.get("schema_data", {})
 	preferences_text = data.get("client_preferences_text", "")
 
-	from schemas.client_requirements_model import ClientRentalRequirements
 	try:
 		validated_schema = ClientRentalRequirements(**schema_data_raw)
-	except Exception as e:
+	except ValidationError as e:
 		logger.error(f"Ошибка валидации Pydantic модели из WebApp от {message.from_user.id}: {e}")
 		await message.answer("Ошибка валидации данных. Пожалуйста, попробуй еще раз.")
 		return
-
-	def extract_all_reqs(d: dict, p: str = "") -> dict:
-		res = {}
-		if isinstance(d, dict):
-			if "is_strict_requirement" in d and "value" in d:
-				res[p] = d["is_strict_requirement"]
-			else:
-				for k, v in d.items():
-					if v is not None and isinstance(v, (dict, list)):
-						if isinstance(v, dict):
-							res.update(extract_all_reqs(v, k))
-						elif isinstance(v, list):
-							for item in v:
-								if isinstance(item, dict):
-									res.update(extract_all_reqs(item, k))
-		return res
-
-	strict_reqs = extract_all_reqs(validated_schema.model_dump(mode='json'))
 
 	await state.update_data(
 		descr_json=validated_schema,
 		preferences_text=preferences_text
 	)
 
-	reqs_lines = []
-	for key, is_strict in strict_reqs.items():
-		status = "✅ Строго" if is_strict else "➖ Гибко"
-		reqs_lines.append(f"• {key}: {status}")
-
-	reqs_text = "\n".join(reqs_lines) if reqs_lines else "Параметры не найдены"
-
 	await message.answer(
-		f"Окей, все получил! ✅\n\n"
-		f"📌 **Статусы параметров:**\n{reqs_text}\n\n"
-		f"💬 **Пожелания клиента:**\n{preferences_text or 'Нет'}\n\n"
-		f"Начинаем обработку ссылок?",
+		"Окей, все получил! ✅\n\n"
+		"Начинаем обработку ссылок?",
 		reply_markup=get_confirm_kb()
 	)
 
@@ -175,9 +151,16 @@ async def process_confirm(message: Message, state: FSMContext):
 		await state.clear()
 		return
 
-	description = data.get("description", "")
+	client_requirements_raw = data.get("descr_json")
+	try:
+		client_requirements = ClientRentalRequirements.model_validate(client_requirements_raw)
+	except ValidationError as e:
+		logger.error(f"Не удалось получить требования клиента перед обработкой: {e}")
+		await message.answer("Ошибка: требования клиента отсутствуют или повреждены")
+		await state.clear()
+		return
 
-	results = await process_links_concurrently(links, description)
+	results = await evaluate_offers(links, client_requirements)
 
 	# Проверяем, не нажал ли юзер кнопку "Стоп" пока шла обработка
 	current_data = await state.get_data()
@@ -190,9 +173,16 @@ async def process_confirm(message: Message, state: FSMContext):
 	# Формируем итоговый ответ
 	logger.success(f"Обработка ссылок для {message.from_user.id} успешно завершена.")
 	response_lines = ["✅ **Результаты обработки:**\n"]
-	for is_match, text_result in results:
-		status_icon = "🟢" if is_match else "🔴"
-		response_lines.append(f"{status_icon} {text_result}")
+	for result in results:
+		if result.error:
+			response_lines.append(f"⚠️ {result.url} -> {result.error}")
+			continue
+		status_icon = "🟢" if result.factual_score and result.factual_score >= 0.5 else "🔴"
+		response_lines.append(
+			f"{status_icon} {result.url} -> "
+			f"оценка {result.factual_score:.2f}, "
+			f"без строгого отсечения {result.potential_score:.2f}"
+		)
 
 	final_text = "\n".join(response_lines)
 

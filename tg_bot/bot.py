@@ -1,23 +1,19 @@
+"""Compatibility runner for existing IDE configurations.
+
+Prefer ``python main.py`` or ``python -m tg_bot`` for new configurations.
+"""
+
+# ruff: noqa: I001 -- this compatibility runner bootstraps the package path.
+
 import asyncio
-import os
-from aiogram import Bot, Dispatcher
-from dotenv import load_dotenv
-from loguru import logger
+import sys
+from pathlib import Path
 
-import utils.logger  # To initialize logger configuration
-from tg_bot.handlers import router
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-load_dotenv()
+from tg_bot.application import run_bot
 
-async def main():
-    logger.info("Запуск бота...")
-    bot = Bot(token=os.getenv('BOT_TOKEN'))
-    dp = Dispatcher()
-
-    dp.include_router(router)
-
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(run_bot())

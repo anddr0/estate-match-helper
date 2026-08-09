@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 LOGS_DIR = BASE_DIR / "logs"
 
 
-def setup_logging():
+def setup_logging() -> None:
 	logger.remove()
 
 	LOGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -44,5 +44,3 @@ def setup_logging():
 	)
 
 	logger.info("Логирование успешно настроено.")
-
-setup_logging()

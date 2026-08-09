@@ -4,11 +4,11 @@ import time
 from curl_cffi import requests
 from loguru import logger
 
-from utils.constans.constants import (
-    MAX_DELAY_BEFORE_URL_FETCH,
-    MIN_DELAY_BEFORE_URL_FETCH,
+from config.settings import (
+    CHROME_SESSION_HEADERS,
+    MAX_FETCH_DELAY_SECONDS,
+    MIN_FETCH_DELAY_SECONDS,
 )
-from utils.constans.headers import CHROME_SESSION_HEADERS
 
 
 class StealthFetcher:
@@ -19,7 +19,12 @@ class StealthFetcher:
         self.session.headers.update(CHROME_SESSION_HEADERS)
         logger.debug("Заголовки сессии StealthFetcher успешно обновлены")
 
-    def fetch_page(self, url, min_delay=MIN_DELAY_BEFORE_URL_FETCH, max_delay=MAX_DELAY_BEFORE_URL_FETCH):
+    def fetch_page(
+        self,
+        url: str,
+        min_delay: float = MIN_FETCH_DELAY_SECONDS,
+        max_delay: float = MAX_FETCH_DELAY_SECONDS,
+    ) -> str | None:
         sleep_time = random.uniform(min_delay, max_delay)
         logger.info(f"Маскируемся. Ждем {sleep_time:.2f} сек. перед запросом к {url}")
         time.sleep(sleep_time)
@@ -36,7 +41,4 @@ class StealthFetcher:
 
         except requests.errors.RequestsError as e:
             logger.error(f"Сетевая ошибка при запросе к {url}: {e}")
-            return None
-        except Exception as e:
-            logger.exception(f"Непредвиденная ошибка при загрузке страницы {url}: {e}")
             return None
