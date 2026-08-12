@@ -1,7 +1,9 @@
+from config.ai_models import DEFAULT_AI_MODEL
+
 MIN_FETCH_DELAY_SECONDS = 6.0
 MAX_FETCH_DELAY_SECONDS = 12.0
 
-GEMINI_FLASH_LITE_MODEL = "gemini-3.5-flash-lite"
+GEMINI_FLASH_LITE_MODEL = DEFAULT_AI_MODEL
 
 CHROME_SESSION_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"

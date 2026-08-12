@@ -1,21 +1,43 @@
 import json
+from contextlib import aclosing
 
 from aiogram import Bot, F, Router
+from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, ReplyKeyboardRemove
+from aiogram.types import LinkPreviewOptions, Message, ReplyKeyboardRemove
 from aiogram.utils.chat_action import ChatActionSender
 from loguru import logger
 from pydantic import ValidationError
 
 from schemas.client_requirements import ClientRentalRequirements
-from services.offers import evaluate_offers, extract_offer_links
+from services.offers import extract_offer_links, iter_evaluated_offers
 from services.requirements import parse_client_requirements
 from tg_bot.downloads import download_html
 from tg_bot.keyboards import get_confirm_kb, get_stop_kb, get_webapp_keyboard
+from tg_bot.messages import (
+	COMMANDS_HELP_TEXT,
+	COMMANDS_PARSE_TEXT,
+	PARSE_IN_PROCESS_TEXT,
+	START_TEXT,
+	format_offer_result,
+)
 from tg_bot.states import ParseFlow
 
 router = Router()
+
+
+@router.message(Command("start"))
+async def cmd_start(message: Message, state: FSMContext):
+	logger.info(f"Пользователь {message.from_user.id} запустил команду /start.")
+	await state.clear()
+	await message.answer(START_TEXT, reply_markup=ReplyKeyboardRemove())
+
+
+@router.message(Command("help"))
+async def cmd_help(message: Message):
+	logger.info(f"Пользователь {message.from_user.id} запустил команду /help.")
+	await message.answer(COMMANDS_HELP_TEXT)
 
 
 @router.message(Command("cancel"))
@@ -28,7 +50,7 @@ async def cmd_cancel(message: Message, state: FSMContext):
 @router.message(Command("parse"))
 async def cmd_parse(message: Message, state: FSMContext):
 	logger.info(f"Пользователь {message.from_user.id} запустил команду /parse.")
-	await message.answer("Ожидаю файл HTML. Скинь его мне.")
+	await message.answer(COMMANDS_PARSE_TEXT)
 	await state.set_state(ParseFlow.waiting_for_html)
 
 
@@ -58,9 +80,11 @@ async def process_document(message: Message, state: FSMContext, bot: Bot):
 	await state.update_data(estate_offers_links=links)
 
 	await message.answer(
-		f"🎉 Успешно спаршено! Найдено {len(links)} ссылок.\nТеперь отправь текстовое описание для анализа."
+		f"🎉 Успешно спаршено! Найдено {len(links)} ссылок.\n\n"
+		"🧪 Сейчас включен тестовый режим. Введи, сколько объявлений нужно "
+		f"успешно обработать: от 1 до {len(links)}."
 	)
-	await state.set_state(ParseFlow.waiting_for_description)
+	await state.set_state(ParseFlow.waiting_for_offer_limit)
 
 
 @router.message(ParseFlow.waiting_for_html)
@@ -68,12 +92,44 @@ async def process_document_invalid(message: Message):
 	await message.answer("Я жду файл документом! 📎\nПришли .html файл или нажми /cancel.")
 
 
+@router.message(ParseFlow.waiting_for_offer_limit, F.text)
+async def process_offer_limit(message: Message, state: FSMContext):
+	data = await state.get_data()
+	links = data.get("estate_offers_links", [])
+
+	try:
+		offer_limit = int(message.text.strip())
+	except (TypeError, ValueError):
+		offer_limit = 0
+
+	if offer_limit <= 0 or offer_limit > len(links):
+		await message.answer(
+			f"Введи целое число от 1 до {len(links)}."
+		)
+		return
+
+	logger.info(
+		f"Пользователь {message.from_user.id} выбрал "
+		f"{offer_limit} успешных обработок."
+	)
+	await state.update_data(successful_offer_limit=offer_limit)
+	await state.set_state(ParseFlow.waiting_for_description)
+	await message.answer("Теперь отправь текстовое описание для анализа.")
+
+
+@router.message(ParseFlow.waiting_for_offer_limit)
+async def process_offer_limit_invalid(message: Message, state: FSMContext):
+	data = await state.get_data()
+	links = data.get("estate_offers_links", [])
+	await message.answer(f"Введи целое число от 1 до {len(links)}.")
+
+
 @router.message(ParseFlow.waiting_for_description, F.text)
 async def process_description(message: Message, state: FSMContext, bot: Bot):
 	logger.info(f"Получено текстовое описание от {message.from_user.id}, отправляем в нейросеть.")
 	await state.update_data(description=message.text)
 
-	await message.answer("Обрабатываем описание...")
+	await message.answer(PARSE_IN_PROCESS_TEXT)
 
 	async with ChatActionSender.typing(bot=bot, chat_id=message.chat.id):
 		descr_json = await parse_client_requirements(message.text)
@@ -144,10 +200,16 @@ async def process_confirm(message: Message, state: FSMContext):
 
 	data = await state.get_data()
 	links = data.get("estate_offers_links", [])
+	successful_offer_limit = data.get("successful_offer_limit")
 
 	if not links:
 		logger.error(f"У пользователя {message.from_user.id} отсутствуют ссылки перед стартом обработки.")
 		await message.answer("Ошибка: ссылок для обработки не обнаружено", reply_markup=ReplyKeyboardRemove())
+		await state.clear()
+		return
+	if not isinstance(successful_offer_limit, int) or not 0 < successful_offer_limit <= len(links):
+		logger.error(f"У пользователя {message.from_user.id} отсутствует корректный лимит.")
+		await message.answer("Ошибка: не задано количество объявлений", reply_markup=ReplyKeyboardRemove())
 		await state.clear()
 		return
 
@@ -160,38 +222,44 @@ async def process_confirm(message: Message, state: FSMContext):
 		await state.clear()
 		return
 
-	results = await evaluate_offers(links, client_requirements)
+	processed = 0
+	stopped = False
+	async with aclosing(iter_evaluated_offers(links, client_requirements)) as results:
+		async for result in results:
+			current_data = await state.get_data()
+			if current_data.get("stop_processing"):
+				stopped = True
+				break
 
-	# Проверяем, не нажал ли юзер кнопку "Стоп" пока шла обработка
-	current_data = await state.get_data()
-	if current_data.get("stop_processing"):
+			if result.error:
+				logger.warning(f"Пропускаем объявление {result.url}: {result.error}")
+				continue
+
+			processed += 1
+			await message.answer(
+				format_offer_result(result, processed=processed, total=successful_offer_limit),
+				parse_mode=ParseMode.HTML,
+				link_preview_options=LinkPreviewOptions(is_disabled=True),
+			)
+			if processed >= successful_offer_limit:
+				break
+
+	if stopped:
 		logger.warning(f"Обработка для {message.from_user.id} была остановлена пользователем.")
-		await message.answer("Обработка была остановлена пользователем.", reply_markup=ReplyKeyboardRemove())
-		await state.clear()
-		return
-
-	# Формируем итоговый ответ
-	logger.success(f"Обработка ссылок для {message.from_user.id} успешно завершена.")
-	response_lines = ["✅ **Результаты обработки:**\n"]
-	for result in results:
-		if result.error:
-			response_lines.append(f"⚠️ {result.url} -> {result.error}")
-			continue
-		status_icon = "🟢" if result.factual_score and result.factual_score >= 0.5 else "🔴"
-		response_lines.append(
-			f"{status_icon} {result.url} -> "
-			f"оценка {result.factual_score:.2f}, "
-			f"без строгого отсечения {result.potential_score:.2f}"
+		await message.answer(
+			f"Обработка остановлена. Готово: {processed} из {successful_offer_limit}.",
+			reply_markup=ReplyKeyboardRemove(),
 		)
-
-	final_text = "\n".join(response_lines)
-
-	# Отправляем чанками, если текст превышает лимит Telegram (4096)
-	max_length = 4000
-	for i in range(0, len(final_text), max_length):
-		await message.answer(final_text[i: i + max_length])
-
-	await message.answer("Обработка полностью завершена!", reply_markup=ReplyKeyboardRemove())
+	else:
+		logger.success(f"Обработка ссылок для {message.from_user.id} успешно завершена.")
+		if processed >= successful_offer_limit:
+			completion_text = f"✅ Обработка завершена: {processed} из {successful_offer_limit} объявлений."
+		else:
+			completion_text = (
+				f"⚠️ Ссылки закончились. Успешно обработано: "
+				f"{processed} из {successful_offer_limit} объявлений."
+			)
+		await message.answer(completion_text, reply_markup=ReplyKeyboardRemove())
 	await state.clear()
 
 
